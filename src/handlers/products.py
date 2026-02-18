@@ -6,6 +6,7 @@ from aiogram.types import Message
 
 from src.api.file_storage.files import FilesApi
 from src.api.shop_backend.products import ProductsApi
+from src.schemas.products import ProductDto
 from src.states import AddProduct
 
 products_router = Router(name='products')
@@ -23,6 +24,7 @@ async def add_product_instruction(message: Message, state: FSMContext) -> None:
             'Apple\niPhone 16 Black (128gb)\n60000\n16'
         ),
     )
+
 
 @products_router.message(AddProduct.data)
 async def add_product_data(message: Message, state: FSMContext) -> None:
@@ -50,6 +52,7 @@ async def add_product_data(message: Message, state: FSMContext) -> None:
     await message.answer(text='Теперь загрузите фото')
     await state.set_state(AddProduct.image)
 
+
 @products_router.message(AddProduct.image, F.photo)
 async def add_product(message: Message, state: FSMContext, bot: Bot) -> None:
     photo = message.photo[-1]
@@ -57,19 +60,22 @@ async def add_product(message: Message, state: FSMContext, bot: Bot) -> None:
     buffer = BytesIO()
     await bot.download_file(file_path=file.file_path, destination=buffer)
     image_bytes = buffer.getvalue()
-    product_data = await state.get_data()
+    product_dto = await state.get_data()
     image_s3_path = await FilesApi.upload(image_bytes, str(bot.id), str(message.from_user.id))
-    product_data['image_path'] = image_s3_path.file_path
+    product_dto['image_path'] = image_s3_path.file_path
+    product_dto = ProductDto.model_validate(product_dto)
 
+    await ProductsApi.create(product_dto)
+    await message.answer(
+        text=(
+            'Телефон был добавлен в каталог\n'
+            f'Фирма: {product_dto.brand}\n'
+            f'Модель: {product_dto.title}\n'
+            f'Цена: {product_dto.price}\n'
+            f'Количество на складе: {product_dto.quantity}'
+        )
+    )
 
-    await ProductsApi.create(product_data)
-    await message.answer(text=(
-        'Телефон был добавлен в каталог\n'
-        f'Фирма: {product_data['brand']}\n'
-        f'Модель: {product_data['title']}\n'
-        f'Цена: {product_data['price']}\n'
-        f'Количество на складе: {product_data['quantity']}'
-    ))
 
 @products_router.message(AddProduct.image)
 async def wrong_image(message: Message) -> None:

@@ -1,10 +1,12 @@
 from pydantic import BaseModel
 
 
-class ProductResponse(BaseModel):
-    id: int
+class ProductDto(BaseModel):
     brand: str
     title: str
     price: int
     quantity: int
     image_path: str
+
+class ProductResponse(ProductDto):
+    id: int

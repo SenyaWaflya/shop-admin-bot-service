@@ -14,7 +14,7 @@ class FilesApi:
                 data={
                     'bot_id': bot_id,
                     'user_id': user_id,
-                }
+                },
             )
             resp.raise_for_status()
             return FilePath.model_validate(resp.json())
